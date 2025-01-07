@@ -21,8 +21,106 @@ class AgenticController:
         """Process an event using agentic logic."""
         if "code" in event:
             return self._handle_code_event(event)
-        else:
+        elif "market_data" in event:
+            return self._handle_market_event(event)
+        elif "flight_id" in event:
             return self._handle_flight_event(event)
+        else:
+            return self._error_response("Unknown event type")
+
+    def _handle_market_event(self, event: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle market-related events."""
+        market_data = event.get("market_data", {})
+        portfolio = event.get("portfolio", {})
+        
+        if not market_data:
+            return self._error_response("Missing market data")
+
+        prompt = self._generate_market_prompt(event)
+        
+        try:
+            llm_response = self.llm_client.stream_text(prompt)
+            action = self._parse_market_response(llm_response, market_data)
+            
+            logger.info(f"Determined action for {market_data['asset']}: {action['action_type']}")
+            return action
+
+        except Exception as e:
+            logger.error(f"Error during market analysis: {e}")
+            return self._error_response(str(e))
+
+    def _generate_market_prompt(self, event: Dict[str, Any]) -> str:
+        """Generate a prompt for market events."""
+        market_data = event["market_data"]
+        portfolio = event["portfolio"]
+        
+        prompt = (
+            f"Analyze the following market conditions for {market_data['asset']}:\n\n"
+            f"Price: ${market_data['price']:,.2f}\n"
+            f"Volume: {market_data['volume']}\n"
+            f"RSI: {market_data['indicators']['rsi']}\n"
+            f"MACD Value: {market_data['indicators']['macd']['value']}\n"
+            f"MACD Signal: {market_data['indicators']['macd']['signal']}\n"
+            f"MACD Histogram: {market_data['indicators']['macd']['histogram']}\n"
+            f"Sentiment Score: {market_data['indicators']['sentiment_score']}\n"
+            f"Market Trend: {market_data['market_context']['trend']}\n"
+            f"Volatility: {market_data['market_context']['volatility']}\n"
+            f"News Sentiment: {market_data['market_context']['news_sentiment']}\n\n"
+            f"Current Portfolio:\n"
+        )
+        
+        for asset, amount in portfolio.items():
+            prompt += f"{asset}: {float(amount):,.2f}\n"
+        
+        prompt += (
+            "\nBased on this information, what trading action should be taken? "
+            "Consider technical indicators, market sentiment, and risk management. "
+            "Provide a structured response with:\n"
+            "1. Action (BUY/SELL/HOLD)\n"
+            "2. Size (if BUY/SELL)\n"
+            "3. Reasoning\n"
+            "4. Risk assessment\n"
+            "5. Confidence level"
+        )
+        
+        return prompt
+
+    def _parse_market_response(self, response: str, market_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Parse LLM response for market events."""
+        try:
+            response_lower = response.lower()
+            steps = self._extract_steps(response)
+            
+            # Extract action from the numbered list
+            action_match = re.search(r'1\.\s*Action:\s*(\w+)', response)
+            if action_match:
+                action_type = action_match.group(1).upper()
+            else:
+                action_type = "HOLD"
+            
+            # Extract suggested size if present
+            size_match = re.search(r'size:?\s*([\d.]+)', response_lower)
+            suggested_size = float(size_match.group(1)) if size_match else 0.0
+            
+            # Determine confidence
+            confidence = self._determine_confidence(response)
+            
+            return {
+                "action_type": action_type,
+                "details": {
+                    "asset": market_data["asset"],
+                    "price": market_data["price"],
+                    "size": suggested_size,
+                    "raw_response": response
+                },
+                "confidence": confidence,
+                "reasoning": response,
+                "steps": steps
+            }
+
+        except Exception as e:
+            logger.error(f"Error parsing market response: {e}")
+            return self._error_response("Failed to parse market response")
 
     def _handle_code_event(self, event: Dict[str, Any]) -> Dict[str, Any]:
         """Handle code-related events."""
