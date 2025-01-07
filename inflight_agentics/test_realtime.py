@@ -1,5 +1,6 @@
 """Script to test OpenAI Realtime API integration."""
 import logging
+import asyncio
 from inflight_agentics import RealtimeLLMClient
 
 logging.basicConfig(
@@ -8,7 +9,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def test_realtime_api():
+async def test_realtime_api():
     """Test the OpenAI Realtime API with a sample prompt."""
     client = RealtimeLLMClient()
     
@@ -33,7 +34,8 @@ def test_realtime_api():
             logger.info(f"\nTest {i}: Sending prompt to OpenAI Realtime API...")
             logger.info(f"Prompt: {prompt}\n")
             
-            response = client.stream_text(prompt)
+            # Get streaming response
+            response = await client.stream_text(prompt)
             
             logger.info(f"Response received:")
             logger.info("-" * 50)
@@ -47,5 +49,5 @@ def test_realtime_api():
 
 if __name__ == "__main__":
     logger.info("Starting OpenAI Realtime API test...")
-    test_realtime_api()
+    asyncio.run(test_realtime_api())
     logger.info("All tests completed.")

@@ -9,7 +9,7 @@ packages = [{include = "inflight_agentics"}]
 [tool.poetry.dependencies]
 python = ">=3.9,<3.12"
 kafka-python = "^2.0.2"
-openai = "^1.59.3"
+openai = {extras = ["realtime"], version = "^1.59.4"}
 python-dotenv = "^1.0.1"
 six = "^1.16.0"
 
