@@ -1,0 +1,28 @@
+[tool.poetry]
+name = "inflight-agentics"
+version = "0.1.0"
+description = "A pioneering paradigm designed to transcend the limitations of traditional transactional events"
+authors = ["Inflight Team"]
+readme = "README.md"
+packages = [{include = "inflight_agentics"}]
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.12"
+kafka-python = "^2.0.2"
+openai = "^1.59.3"
+python-dotenv = "^1.0.1"
+six = "^1.16.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.4"
+pytest-mock = "^3.14.0"
+pytest-cov = "^6.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+pythonpath = [
+    "."
+]
