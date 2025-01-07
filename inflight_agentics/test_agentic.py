@@ -10,7 +10,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-def test_agentic_decisions():
+async def test_agentic_decisions():
     """Test the AgenticController with various flight scenarios."""
     controller = AgenticController()
     
@@ -43,7 +43,7 @@ def test_agentic_decisions():
             logger.info(f"Event details: {json.dumps(event, indent=2)}\n")
             
             # Process the event
-            action = controller.process_event(event)
+            action = await controller.process_event(event)
             
             # Log the results
             logger.info("Decision details:")
@@ -61,6 +61,7 @@ def test_agentic_decisions():
         raise
 
 if __name__ == "__main__":
+    import asyncio
     logger.info("Starting AgenticController test...")
-    test_agentic_decisions()
+    asyncio.run(test_agentic_decisions())
     logger.info("All tests completed.")

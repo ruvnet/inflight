@@ -1,4 +1,5 @@
 """Real-time code monitoring and fixing using agentic decision making."""
+import asyncio
 import io
 import logging
 import sys
@@ -79,7 +80,7 @@ class CodeFixerAgent:
                 "error_line": error_line
             }
     
-    def get_fix_suggestion(self, code: str, execution_result: Dict[str, Any]) -> Dict[str, Any]:
+    async def get_fix_suggestion(self, code: str, execution_result: Dict[str, Any]) -> Dict[str, Any]:
         """Get suggestions for fixing code based on execution results."""
         event = {
             "code": code,
@@ -97,7 +98,7 @@ class CodeFixerAgent:
             event["error_message"] = execution_result["error"]
             event["error_line"] = execution_result["error_line"]
         
-        return self.controller.process_event(event)
+        return await self.controller.process_event(event)
 
 def print_section(title: str, content: str = "", char: str = "=", width: int = 80):
     """Print a formatted section with title and content."""
@@ -108,7 +109,7 @@ def print_section(title: str, content: str = "", char: str = "=", width: int = 8
         print(content.strip())
         print(char * width)
 
-def test_code_fixing():
+async def test_code_fixing():
     """Test the code fixing capabilities."""
     agent = CodeFixerAgent()
     
@@ -208,7 +209,7 @@ print(result)
             
             # Get and show fix suggestions if there was an error
             if not result['success']:
-                fix = agent.get_fix_suggestion(test_case['code'], result)
+                fix = await agent.get_fix_suggestion(test_case['code'], result)
                 
                 # Show the structured fix information
                 if fix['action_type'] == "FIX":
@@ -228,5 +229,5 @@ print(result)
 
 if __name__ == "__main__":
     print_section("Starting Code Fixer Test")
-    test_code_fixing()
+    asyncio.run(test_code_fixing())
     print_section("All tests completed")

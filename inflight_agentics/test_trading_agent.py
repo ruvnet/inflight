@@ -26,7 +26,7 @@ class TradingAgent:
         }
         self.trade_history: List[Dict[str, Any]] = []
     
-    def analyze_market(self, market_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def analyze_market(self, market_data: Dict[str, Any]) -> Dict[str, Any]:
         """Analyze market conditions and determine trading action."""
         event = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -35,7 +35,7 @@ class TradingAgent:
             "trade_history": self.trade_history
         }
         
-        decision = self.controller.process_event(event)
+        decision = await self.controller.process_event(event)
         
         if decision["action_type"] in ["BUY", "SELL"]:
             self._execute_trade(decision)
@@ -46,8 +46,26 @@ class TradingAgent:
         """Simulate trade execution and update portfolio."""
         asset = decision["details"]["asset"]
         action = decision["action_type"]
-        size = Decimal(str(decision["details"]["size"]))
         price = Decimal(str(decision["details"]["price"]))
+        
+        # Calculate actual size based on the suggested size and available assets
+        raw_size = str(decision["details"]["size"])
+        try:
+            if "%" in raw_size:
+                # Handle percentage-based sizes
+                percentage = Decimal(raw_size.rstrip("%")) / Decimal("100")
+                if action == "BUY":
+                    available_usd = self.portfolio["USD"]
+                    size = (available_usd * percentage) / price
+                else:  # SELL
+                    available_asset = self.portfolio.get(asset, Decimal("0"))
+                    size = available_asset * percentage
+            else:
+                # Handle absolute sizes
+                size = Decimal(raw_size)
+        except (ValueError, TypeError):
+            logger.error(f"Failed to parse trade size: {raw_size}")
+            return
         
         if action == "BUY":
             cost = size * price
@@ -107,7 +125,7 @@ def format_portfolio(portfolio: Dict[str, Decimal]) -> str:
     lines = [f"{asset}: {float(amount):,.2f}" for asset, amount in portfolio.items()]
     return "\n".join(lines)
 
-def test_trading_agent():
+async def test_trading_agent():
     """Test the trading decision capabilities."""
     agent = TradingAgent()
     
@@ -243,7 +261,7 @@ def test_trading_agent():
             print_section("Market Data", format_market_data(test_case['market_data']), char="-")
             
             # Get trading decision
-            decision = agent.analyze_market(test_case['market_data'])
+            decision = await agent.analyze_market(test_case['market_data'])
             
             # Show decision details
             decision_info = [
@@ -280,6 +298,7 @@ def test_trading_agent():
             print_section("Trade History", trades)
 
 if __name__ == "__main__":
+    import asyncio
     print_section("Starting Trading Agent Test")
-    test_trading_agent()
+    asyncio.run(test_trading_agent())
     print_section("All tests completed")

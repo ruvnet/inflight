@@ -17,18 +17,18 @@ class AgenticController:
         self.llm_client = llm_client or RealtimeLLMClient()
         logger.info("Agentic Controller initialized with RealtimeLLMClient.")
 
-    def process_event(self, event: Dict[str, Any]) -> Dict[str, Any]:
+    async def process_event(self, event: Dict[str, Any]) -> Dict[str, Any]:
         """Process an event using agentic logic."""
         if "code" in event:
-            return self._handle_code_event(event)
+            return await self._handle_code_event(event)
         elif "market_data" in event:
-            return self._handle_market_event(event)
+            return await self._handle_market_event(event)
         elif "flight_id" in event:
-            return self._handle_flight_event(event)
+            return await self._handle_flight_event(event)
         else:
             return self._error_response("Unknown event type")
 
-    def _handle_market_event(self, event: Dict[str, Any]) -> Dict[str, Any]:
+    async def _handle_market_event(self, event: Dict[str, Any]) -> Dict[str, Any]:
         """Handle market-related events."""
         market_data = event.get("market_data", {})
         portfolio = event.get("portfolio", {})
@@ -39,7 +39,7 @@ class AgenticController:
         prompt = self._generate_market_prompt(event)
         
         try:
-            llm_response = self.llm_client.stream_text(prompt)
+            llm_response = await self.llm_client.stream_text(prompt)
             action = self._parse_market_response(llm_response, market_data)
             
             logger.info(f"Determined action for {market_data['asset']}: {action['action_type']}")
@@ -91,16 +91,33 @@ class AgenticController:
             response_lower = response.lower()
             steps = self._extract_steps(response)
             
-            # Extract action from the numbered list
-            action_match = re.search(r'1\.\s*Action:\s*(\w+)', response)
+            # Extract action from the numbered list, handling various formats
+            action_match = re.search(r'(?:1\.|Action:?)\s*\**(?:Action:?)?\**:?\s*(\w+)', response, re.IGNORECASE)
             if action_match:
                 action_type = action_match.group(1).upper()
             else:
                 action_type = "HOLD"
             
-            # Extract suggested size if present
-            size_match = re.search(r'size:?\s*([\d.]+)', response_lower)
-            suggested_size = float(size_match.group(1)) if size_match else 0.0
+            # Extract suggested size if present, handling various formats
+            suggested_size = 0.0
+            
+            # Try to find percentage-based size
+            percent_match = re.search(r'size:?\s*(?:approximately|about|~)?\s*(?:allocate\s*)?([\d.]+)(?:\s*%|\s*percent(?:age)?)', response_lower)
+            if percent_match:
+                suggested_size = f"{float(percent_match.group(1))}%"
+            else:
+                # Try to find absolute size with various formats
+                size_pattern = r'(?:size:?\s*|buy\s+|sell\s+)(?:approximately|about|~|an?\s+additional|consider\s+(?:buying|selling))?\s*([\d.]+)\s*(?:btc|eth|coins?)?'
+                abs_match = re.search(size_pattern, response_lower, re.IGNORECASE)
+                if abs_match:
+                    suggested_size = float(abs_match.group(1))
+                else:
+                    # Try to find range-based size and take the average
+                    range_match = re.search(r'size:?\s*(?:between|around|about)?\s*([\d.]+)(?:\s*-\s*|\s*to\s*)([\d.]+)', response_lower)
+                    if range_match:
+                        min_val = float(range_match.group(1))
+                        max_val = float(range_match.group(2))
+                        suggested_size = (min_val + max_val) / 2
             
             # Determine confidence
             confidence = self._determine_confidence(response)
@@ -122,7 +139,7 @@ class AgenticController:
             logger.error(f"Error parsing market response: {e}")
             return self._error_response("Failed to parse market response")
 
-    def _handle_code_event(self, event: Dict[str, Any]) -> Dict[str, Any]:
+    async def _handle_code_event(self, event: Dict[str, Any]) -> Dict[str, Any]:
         """Handle code-related events."""
         code = event.get("code", "")
         execution_result = event.get("execution_result", {})
@@ -134,7 +151,7 @@ class AgenticController:
         prompt = self._generate_code_prompt(code, execution_result, error_context)
 
         try:
-            llm_response = self.llm_client.stream_text(prompt)
+            llm_response = await self.llm_client.stream_text(prompt)
             action = self._parse_code_fix_response(llm_response)
             
             logger.info(f"Determined fix action: {action['action_type']}")
@@ -186,7 +203,7 @@ class AgenticController:
 
         return prompt
 
-    def _handle_flight_event(self, event: Dict[str, Any]) -> Dict[str, Any]:
+    async def _handle_flight_event(self, event: Dict[str, Any]) -> Dict[str, Any]:
         """Handle flight-related events."""
         flight_id = event.get("flight_id")
         status = event.get("status")
@@ -198,7 +215,7 @@ class AgenticController:
         prompt = self._generate_flight_prompt(event)
         
         try:
-            llm_response = self.llm_client.stream_text(prompt)
+            llm_response = await self.llm_client.stream_text(prompt)
             action = self._parse_flight_response(llm_response)
             
             logger.info(f"Determined action for {flight_id}: {action['action_type']}")
