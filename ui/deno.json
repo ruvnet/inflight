@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "allowJs": true,
+    "lib": ["deno.window"],
+    "strict": true,
+    "allowImportingTsExtensions": true
+  },
+  "nodeModulesDir": "auto",
+  "importMap": "import_map.json",
+  "tasks": {
+    "dev": "deno run --allow-net --allow-env --allow-read --allow-write --import-map=import_map.json src/main.ts",
+    "test": "deno test --allow-net --allow-env --allow-read --allow-write --import-map=import_map.json"
+  },
+  "fmt": {
+    "files": {
+      "include": ["src/"]
+    },
+    "options": {
+      "useTabs": false,
+      "lineWidth": 80,
+      "indentWidth": 2,
+      "singleQuote": true,
+      "proseWrap": "preserve"
+    }
+  },
+  "lint": {
+    "files": {
+      "include": ["src/"]
+    },
+    "rules": {
+      "tags": ["recommended"]
+    }
+  }
+}

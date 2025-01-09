@@ -1,0 +1,14 @@
+{
+  "imports": {
+    "ws": "npm:ws@8.13.0",
+    "ioredis": "npm:ioredis@5.3.2",
+    "decimal.js": "npm:decimal.js@10.4.3",
+    "@jest/globals": "npm:@jest/globals@29.6.2",
+    "node:events": "node:events"
+  },
+  "scopes": {
+    "npm:": {
+      "events": "node:events"
+    }
+  }
+}
